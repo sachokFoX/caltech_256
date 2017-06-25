@@ -1,7 +1,6 @@
 import os
 from PIL import Image
 from typing import Dict
-from common.size import Size
 from preprocessing.image_metadata import ImageMetadata
 
 
@@ -20,7 +19,7 @@ class ImagesReader:
                 for name in files:
                     if not name.startswith('.'):
                         image = Image.open(os.path.join(root, name))
-                        images[class_id].append(ImageMetadata(image.filename, Size(image.width, image.height), image.layers, image.mode))
+                        images[class_id].append(ImageMetadata(image.filename, (image.width, image.height), image.layers, image.mode))
 
         return images
 
