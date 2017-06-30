@@ -1,78 +1,71 @@
 import os
-import math
-import random
+import Augmentor
 from PIL import Image
-from PIL import ImageFilter
-from PIL import ImageEnhance
+from termcolor import cprint
 from typing import Dict, List, Tuple
-from joblib import Parallel, delayed
 from preprocessing.image_metadata import ImageMetadata
 
 
 class PreProcessor:
-    @staticmethod
-    def preprocess(train_images: Dict[str, ImageMetadata], validate_images: List[ImageMetadata], size: Tuple[int, int], output_dir: str) -> None:
+    def __init__(self, output_dir: str) -> None:
+        self.__output_dir = output_dir
 
-        train_dataset_dir = os.path.join(output_dir, 'train')
-        test_dataset_dir = os.path.join(output_dir, 'test')
-        validate_dataset_dir = os.path.join(output_dir, 'validate')
+    def preprocess(self, train_images: Dict[str, ImageMetadata], test_images: List[ImageMetadata], size: Tuple[int, int]) -> None:
 
-        if not os.path.exists(train_dataset_dir):
-            os.makedirs(train_dataset_dir)
+        test_dataset_dir = os.path.join(self.__output_dir, 'test')
+        train_dataset_dir = os.path.join(self.__output_dir, 'train')
 
-        if not os.path.exists(test_dataset_dir):
-            os.makedirs(test_dataset_dir)
+        self.__create_dir_if_not_exists(test_dataset_dir)
+        self.__create_dir_if_not_exists(train_dataset_dir)
 
-        if not os.path.exists(validate_dataset_dir):
-            os.makedirs(validate_dataset_dir)
+        cprint('processing test dataset...', 'green')
+        for i in test_images:
+            self.__process_image__(i, size, test_dataset_dir)
 
-        datasets = PreProcessor.__split_dataset__(train_images)
+        cprint('processing train dataset...', 'green')
+        for image_class in train_images:
+            path = os.path.join(train_dataset_dir, image_class)
+            for i in train_images[image_class]:
+                self.__process_image__(i, size, path)
 
-        Parallel(n_jobs=2)(delayed(PreProcessor.__process_image__)
-                           (i, size, train_dataset_dir) for i in datasets[0])
-        Parallel(n_jobs=2)(delayed(PreProcessor.__process_image__)
-                           (i, size, test_dataset_dir) for i in datasets[1])
-        Parallel(n_jobs=2)(delayed(PreProcessor.__process_image__)
-                           (i, size, validate_dataset_dir) for i in validate_images)
+        cprint('augmenting train dataset...', 'green')
+        for image_class in train_images:
+            if len(train_images[image_class]) < 100:
+                cprint('augmenting class %s...' % image_class, 'green')
+                path = os.path.join(train_dataset_dir, image_class)
+                pipeline = Augmentor.Pipeline(source_directory=path, output_directory='')
+                pipeline.flip_left_right(probability=0.4)
+                pipeline.rotate(probability=0.7, max_left_rotation=5, max_right_rotation=5)
+                pipeline.sample(100 - len(train_images[image_class]))
 
-    @staticmethod
-    def __split_dataset__(images: Dict[str, ImageMetadata]) -> Tuple[List[str], List[str]]:
-        train_dataset = []
-        test_dataset = []
-
-        for k in images:
-            class_images = list(images[k])
-            random.shuffle(class_images)
-            train_samples = round(len(class_images) * 0.8)
-            train_dataset.extend(class_images[:train_samples])
-            test_dataset.extend(class_images[train_samples:])
-
-        return (train_dataset, test_dataset)
+    # @staticmethod
+    # def __split_train_validation_set__(images) -> ():
+    #     train_dataset = {}
+    #     validation_dataset = {}
+    #
+    #     for k in images:
+    #         class_images = list(images[k])
+    #         random.shuffle(class_images)
+    #
+    #         train_samples = round(len(class_images) * 0.8)
+    #
+    #         train_dataset[k] = class_images[:train_samples]
+    #         validation_dataset[k] = class_images[train_samples:]
+    #
+    #     return train_dataset, validation_dataset
 
     @staticmethod
     def __process_image__(image: ImageMetadata, size: Tuple[int, int], output_dir: str) -> None:
-        path = os.path.join(output_dir, PreProcessor.__get_file_name__(image.path))
-        img = Image.open(image.path)
+        path = os.path.join(output_dir, image.file_name)
+        PreProcessor.__create_dir_if_not_exists(output_dir)
 
+        img = Image.open(image.path)
         img = img.resize(size, Image.BICUBIC)
         img = img.convert("RGB")
-
-        # contrast
-        enh = ImageEnhance.Contrast(img)
-        enh.enhance(1.3)
-
-        # sharpness
-        enh = ImageEnhance.Sharpness(img)
-        enh.enhance(1.3)
 
         img.save(path)
 
     @staticmethod
-    def __get_file_name__(original_path: str) -> str:
-        file_def = os.path.basename(original_path)
-        class_def = os.path.dirname(original_path).split(os.sep)[-1].split('.')
-
-        if file_def.find('train') > 0:
-            return '{:s}_{:s}_{:s}'.format(class_def[0], class_def[1], file_def)
-        else:
-            return file_def
+    def __create_dir_if_not_exists(dataset_dir: str):
+        if not os.path.exists(dataset_dir):
+            os.makedirs(dataset_dir)
