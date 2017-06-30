@@ -43,7 +43,7 @@ class PreProcessor:
         for k in images:
             class_images = list(images[k])
             random.shuffle(class_images)
-            train_samples = round(len(class_images) * 0.6)
+            train_samples = round(len(class_images) * 0.8)
             train_dataset.extend(class_images[:train_samples])
             test_dataset.extend(class_images[train_samples:])
 
