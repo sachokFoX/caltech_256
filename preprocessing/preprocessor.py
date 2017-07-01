@@ -1,14 +1,15 @@
 import os
 import Augmentor
 from PIL import Image
-from termcolor import cprint
 from typing import Dict, List, Tuple
 from preprocessing.image_metadata import ImageMetadata
 
 
 class PreProcessor:
-    def __init__(self, output_dir: str) -> None:
+    def __init__(self, output_dir: str, is_augmentation_enabled=True, min_samples_per_class=100) -> None:
         self.__output_dir = output_dir
+        self.__is_augmentation_enabled = is_augmentation_enabled
+        self.__min_samples_per_class = min_samples_per_class
 
     def preprocess(self, train_images: Dict[str, ImageMetadata], test_images: List[ImageMetadata], size: Tuple[int, int]) -> None:
 
@@ -18,25 +19,26 @@ class PreProcessor:
         self.__create_dir_if_not_exists(test_dataset_dir)
         self.__create_dir_if_not_exists(train_dataset_dir)
 
-        cprint('processing test dataset...', 'green')
+        print('processing test dataset...')
         for i in test_images:
             self.__process_image__(i, size, test_dataset_dir)
 
-        cprint('processing train dataset...', 'green')
+        print('processing train dataset...')
         for image_class in train_images:
             path = os.path.join(train_dataset_dir, image_class)
             for i in train_images[image_class]:
                 self.__process_image__(i, size, path)
 
-        cprint('augmenting train dataset...', 'green')
-        for image_class in train_images:
-            if len(train_images[image_class]) < 100:
-                cprint('augmenting class %s...' % image_class, 'green')
-                path = os.path.join(train_dataset_dir, image_class)
-                pipeline = Augmentor.Pipeline(source_directory=path, output_directory='')
-                pipeline.flip_left_right(probability=0.4)
-                pipeline.rotate(probability=0.7, max_left_rotation=5, max_right_rotation=5)
-                pipeline.sample(100 - len(train_images[image_class]))
+        if self.__is_augmentation_enabled:
+            print('augmenting train dataset...')
+            for image_class in train_images:
+                if len(train_images[image_class]) < self.__min_samples_per_class:
+                    print('augmenting class %s...' % image_class)
+                    path = os.path.join(train_dataset_dir, image_class)
+                    pipeline = Augmentor.Pipeline(source_directory=path, output_directory='')
+                    pipeline.flip_left_right(probability=0.4)
+                    pipeline.rotate(probability=0.7, max_left_rotation=5, max_right_rotation=5)
+                    pipeline.sample(self.__min_samples_per_class - len(train_images[image_class]))
 
     # @staticmethod
     # def __split_train_validation_set__(images) -> ():

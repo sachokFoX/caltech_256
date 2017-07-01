@@ -12,8 +12,8 @@ from preprocessing.images_reader import ImagesReader
 
 
 def run(size: Tuple[int, int], dataset_dir: str):
-    epochs = 100
-    batch_size = 128
+    epochs = 50
+    batch_size = 256
     classes_count = 257
     input_shape = size[0] * size[1] * 3
 
@@ -29,14 +29,12 @@ def run(size: Tuple[int, int], dataset_dir: str):
 
     model = Sequential()
 
-    model.add(Dense(2048, input_dim=input_shape))
+    model.add(Dense(input_shape, input_shape=(input_shape,)))
     model.add(Activation('relu'))
     model.add(Dropout(0.5))
 
-    for i in range(0, 2):
-        model.add(Dense(1024))
-        model.add(Activation('relu'))
-
+    model.add(Dense(1024))
+    model.add(Activation('relu'))
     model.add(Dropout(0.25))
 
     model.add(Dense(classes_count))
@@ -52,14 +50,14 @@ def run(size: Tuple[int, int], dataset_dir: str):
         y_train,
         batch_size=batch_size,
         epochs=epochs,
-        validation_split=0.2,
+        validation_split=0.1,
         callbacks=[tensorBoard])
 
     prediction_result = model.predict_classes(x_test) + 1
 
     print()
     print('Saving results')
-    with open('nn_results.csv', 'w', newline='') as csvfile:
+    with open(os.path.join('output', 'nn_results.csv'), 'w', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['image', 'class'])
         for i in range(0, len(x_test)):
