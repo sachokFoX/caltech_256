@@ -32,13 +32,16 @@ class PreProcessor:
         if self.__is_augmentation_enabled:
             print('augmenting train dataset...')
             for image_class in train_images:
-                if len(train_images[image_class]) < self.__min_samples_per_class:
+                # if len(train_images[image_class]) < self.__min_samples_per_class:
                     print('augmenting class %s...' % image_class)
                     path = os.path.join(train_dataset_dir, image_class)
                     pipeline = Augmentor.Pipeline(source_directory=path, output_directory='')
-                    pipeline.flip_left_right(probability=0.4)
+                    pipeline.flip_left_right(probability=0.7)
+                    pipeline.skew(probability=0.7, magnitude=0.5)
                     pipeline.rotate(probability=0.7, max_left_rotation=5, max_right_rotation=5)
-                    pipeline.sample(self.__min_samples_per_class - len(train_images[image_class]))
+                    pipeline.random_distortion(probability=0.7, grid_width=16, grid_height=16, magnitude=8)
+                    pipeline.sample(int(len(train_images[image_class]) * 0.2))
+                    # pipeline.sample(self.__min_samples_per_class - len(train_images[image_class]))
 
     # @staticmethod
     # def __split_train_validation_set__(images) -> ():
